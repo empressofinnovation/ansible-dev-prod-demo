@@ -1,0 +1,16 @@
+- name: Ping the host
+  ansible.builtin.ping:
+  register: ping_result
+  ignore_unreachable: true
+
+- name: Gather facts
+  setup:
+  when: ping_result.ping is defined
+
+- name: Save gathered facts to file
+  delegate_to: localhost
+  copy:
+    content: "{{ ansible_facts | to_nice_json }}"
+    dest: "/home/linuxadmin/ansible-dev-prod-demo/collected_facts/{{ ansible_hostname }}_{{ ansible_default_ipv4.address }}_{{ lookup('pipe','date +%Y-%m-%d') }}.json"
+  when: ping_result.ping is defined
+

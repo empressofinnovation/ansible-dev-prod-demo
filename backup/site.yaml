@@ -1,0 +1,36 @@
+- name: Check connectivity and gather facts if reachable
+  hosts: all
+  gather_facts: no
+
+  tasks:
+    - name: Check if host is reachable via Ansible ping
+      ping:
+      register: ping_result
+      ignore_errors: yes
+
+    - name: Log unreachable host
+      local_action:
+        module: lineinfile
+        path: /home/linuxadmin/ansible-dev-prod-demo/collected_facts/activity.log
+        create: yes
+        line: "{{ inventory_hostname }} is unreachable at {{ lookup('pipe', 'date +%Y-%m-%d_%H:%M:%S') }}"
+      when: ping_result is failed
+      delegate_to: localhost
+
+    - name: Gather facts if reachable
+      setup:
+      when: ping_result is succeeded
+
+    - name: Ensure collected_facts directory exists on control node
+      file:
+        path: /home/linuxadmin/ansible-dev-prod-demo/collected_facts
+        state: directory
+        mode: '0755'
+      delegate_to: localhost
+
+    - name: Save gathered facts to file on control node
+      delegate_to: localhost
+      copy:
+        content: "{{ ansible_facts | to_nice_json }}"
+        dest: "/home/linuxadmin/ansible-dev-prod-demo/collected_facts/{{ ansible_hostname }}_{{ ansible_default_ipv4.address }}_{{ lookup('pipe','date +%Y-%m-%d') }}.json"
+      when: ping_result is succeeded
